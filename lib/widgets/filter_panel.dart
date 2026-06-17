@@ -270,7 +270,8 @@ class _FilterPanelState extends State<FilterPanel> with SingleTickerProviderStat
               // Expanding Area
               SizeTransition(
                 sizeFactor: _expandAnimation,
-                alignment: Alignment.centerLeft,
+                // ignore: deprecated_member_use
+                axisAlignment: 0.0,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                   child: Column(
