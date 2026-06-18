@@ -49,6 +49,20 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "VERSION_CODE=$version_code" >> $GITHUB_ENV
 
+      - name: Detect Force Update Tag
+        run: |
+          # Fetch the commit message of the triggering commit
+          COMMIT_MSG=$(git log -1 --format=%B)
+          echo "Triggering commit message: $COMMIT_MSG"
+          
+          if [[ "$COMMIT_MSG" == *"[force]"* ]]; then
+            echo "FORCE_UPDATE=true" >> $GITHUB_ENV
+            echo "Force update enabled."
+          else
+            echo "FORCE_UPDATE=false" >> $GITHUB_ENV
+            echo "Standard optional update."
+          fi
+
       - name: Set up Signing Key (Keystore)
         run: |
           # Use Node.js to write the binary keystore file safely to prevent shell-based corruption
@@ -133,6 +147,7 @@ jobs:
             process.exit(1);
           }
           
+          const isForceUpdate = process.env.FORCE_UPDATE === "true";
           const payload = {
             platform: "android",
             environment: "production",
@@ -145,8 +160,10 @@ jobs:
               sha256: process.env.APK_SHA256,
               size: parseInt(process.env.APK_SIZE, 10)
             },
-            minSupportedVersionCode: parseInt(process.env.VERSION_CODE, 10),
-            forceUpdate: false,
+            minSupportedVersionCode: isForceUpdate 
+              ? parseInt(process.env.VERSION_CODE, 10) 
+              : 0,
+            forceUpdate: isForceUpdate,
             rolloutPercentage: 100,
             releaseNotes: JSON.parse(process.env.RELEASE_NOTES),
             createdBy: "github-actions"
@@ -196,6 +213,7 @@ jobs:
         env:
           RELEASE_WEBHOOK_SECRET: ${{ secrets.RELEASE_WEBHOOK_SECRET }}
           BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
+          FORCE_UPDATE: ${{ env.FORCE_UPDATE }}
 
       - name: Publish GitHub Release (Promote from Draft)
         run: |

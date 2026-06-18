@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../core/utils.dart';
+import '../core/update_service.dart';
 import '../providers/data_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/anime.dart';
@@ -37,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (dataProvider.homeData == null) {
         dataProvider.fetchHomedata();
       }
+      UpdateService.checkAndShowUpdate(context);
     });
   }
 
