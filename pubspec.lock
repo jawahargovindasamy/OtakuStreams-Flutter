@@ -29,10 +29,10 @@ packages:
     dependency: "direct main"
     description:
       name: audioplayers
-      sha256: "1d0c1b1f2095e59080e2d5046639096417a86687d89778da41b0c9a06d683dfd"
+      sha256: f16640453cc47487b7de72a2b28d37c7df1ac97999849f4a46d92b1d2b0f093d
       url: "https://pub.dev"
     source: hosted
-    version: "6.7.0"
+    version: "6.7.1"
   audioplayers_android:
     dependency: transitive
     description:
@@ -276,10 +276,10 @@ packages:
     dependency: transitive
     description:
       name: hooks
-      sha256: "62ae9bb76d02526c7c2110a19b6e6ad788fe28d35e553e35efb02a41a46ab43a"
+      sha256: "9a62a50b50b769a737bc0a8ff381f333529df3ab746b2f6b02e83760231455ba"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.2"
   http:
     dependency: transitive
     description:
@@ -368,14 +368,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  lucide_icons:
+  lucide_icons_flutter:
     dependency: "direct main"
     description:
-      name: lucide_icons
-      sha256: ad24d0fd65707e48add30bebada7d90bff2a1bba0a72d6e9b19d44246b0e83c4
+      name: lucide_icons_flutter
+      sha256: "7c5dc01a32a9905ae34e2d84224e92d6d0c42acf8926df9e01c35a1446bf1b69"
       url: "https://pub.dev"
     source: hosted
-    version: "0.257.0"
+    version: "3.1.14+2"
   matcher:
     dependency: transitive
     description:
@@ -476,10 +476,10 @@ packages:
     dependency: "direct main"
     description:
       name: path_provider
-      sha256: "50c5dd5b6e1aaf6fb3a78b33f6aa3afca52bf903a8a5298f53101fdaee55bbcd"
+      sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.5"
+    version: "2.1.6"
   path_provider_android:
     dependency: transitive
     description:
@@ -508,10 +508,10 @@ packages:
     dependency: transitive
     description:
       name: path_provider_platform_interface
-      sha256: "88f5779f72ba699763fa3a3b06aa4bf6de76c8e5de842cf6f29e2e06476c2334"
+      sha256: "484838772624c3a4b94f1e44a3e19897fee738f2d5c4ce448443b0417f7c9dda"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.2"
+    version: "2.1.3"
   path_provider_windows:
     dependency: transitive
     description:
@@ -657,10 +657,10 @@ packages:
     dependency: "direct main"
     description:
       name: socket_io_client
-      sha256: ef6c989e5eee8d04baf18482ec3d7699b91bc41e279794a99d8e3bef897b074a
+      sha256: f5990ff303d385e7b2150f0e57cca097a8d20c6a2ae0a22cb2d496661ea8ed9b
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.4"
+    version: "3.1.6"
   socket_io_common:
     dependency: transitive
     description:
@@ -869,14 +869,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  web_socket:
+    dependency: transitive
+    description:
+      name: web_socket
+      sha256: "34d64019aa8e36bf9842ac014bb5d2f5586ca73df5e4d9bf5c936975cae6982c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   webview_flutter:
     dependency: "direct main"
     description:
       name: webview_flutter
-      sha256: a3da219916aba44947d3a5478b1927876a09781174b5a2b67fa5be0555154bf9
+      sha256: e4d3474277c5043f5f3100ed27d94ad693abfd5c602b0221c719a4497e4ba1e4
       url: "https://pub.dev"
     source: hosted
-    version: "4.13.1"
+    version: "4.14.0"
   webview_flutter_android:
     dependency: "direct main"
     description:

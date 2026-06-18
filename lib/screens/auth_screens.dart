@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../providers/auth_provider.dart';
 
 // COMMON LOGO WIDGET
@@ -241,7 +241,7 @@ Widget _buildSocialLoginSection(BuildContext context) {
         children: [
           Expanded(
             child: _buildSocialButton(
-              icon: LucideIcons.chrome,
+              icon: LucideIcons.globe,
               label: 'Google',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(

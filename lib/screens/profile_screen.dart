@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../core/unified_scaffold.dart';

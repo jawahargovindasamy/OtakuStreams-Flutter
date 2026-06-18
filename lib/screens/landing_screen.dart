@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../providers/data_provider.dart';
 import '../models/anime.dart';
 import '../core/theme.dart';
@@ -397,7 +397,7 @@ class _LandingScreenState extends State<LandingScreen> {
                     children: [
                       IconButton(
                         onPressed: () {},
-                        icon: const Icon(LucideIcons.twitter, color: AppTheme.primaryBlue),
+                        icon: const Icon(LucideIcons.share2, color: AppTheme.primaryBlue),
                         style: IconButton.styleFrom(
                           side: BorderSide(color: Theme.of(context).dividerColor),
                           padding: const EdgeInsets.all(10),
