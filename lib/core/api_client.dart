@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'environment.dart';
 
 class ApiClient {
   final Dio dio;
-  static const String baseUrl = 'https://otakustreams-backend-j3h5.onrender.com/api';
+  static String get baseUrl => Environment.baseUrl;
+
   
   // Callback or Stream for unauthorized auto-logout
   final _unauthorizedController = StreamController<void>.broadcast();

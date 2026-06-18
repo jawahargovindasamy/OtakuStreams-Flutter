@@ -1,0 +1,199 @@
+name: Build & Release OtakuStreams App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build, Sign, and Register Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for automatic release notes generation
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Parse Version from Tag
+        run: |
+          # Extract tag name (e.g. v1.3.1)
+          TAG_NAME=${{ github.ref_name }}
+          VERSION_NAME=${TAG_NAME#v}
+          
+          # Split version into components
+          IFS='.' read -r -a parts <<< "$VERSION_NAME"
+          major=${parts[0]:-1}
+          minor=${parts[1]:-0}
+          patch=${parts[2]:-0}
+          
+          # Calculate collision-free versionCode
+          version_code=$(( (major * 10000000) + (minor * 10000) + patch ))
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$version_code" >> $GITHUB_ENV
+
+      - name: Set up Signing Key (Keystore)
+        run: |
+          # Decode Base64 keystore into android/app directory
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.jks
+          
+          # Create key.properties configuration file
+          cat <<EOT > android/key.properties
+          storePassword=${{ secrets.STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=release.jks
+          EOT
+
+      - name: Build APK & AAB
+        run: |
+          flutter build apk --release --build-name=${{ env.VERSION_NAME }} --build-number=${{ env.VERSION_CODE }} --dart-define=ENVIRONMENT=production
+          flutter build appbundle --release --build-name=${{ env.VERSION_NAME }} --build-number=${{ env.VERSION_CODE }} --dart-define=ENVIRONMENT=production
+
+      - name: Generate Checksum & Size
+        run: |
+          apk_path="build/app/outputs/flutter-apk/app-release.apk"
+          
+          # Calculate SHA256 checksum
+          sha256=$(sha256sum "$apk_path" | awk '{print $1}')
+          
+          # Get size in bytes
+          size=$(stat -c%s "$apk_path")
+          
+          echo "APK_SHA256=$sha256" >> $GITHUB_ENV
+          echo "APK_SIZE=$size" >> $GITHUB_ENV
+
+      - name: Generate Automatic Release Notes
+        run: |
+          # Fetch commit messages between last tag and current tag
+          # Fallback to general release message if no previous tag is found
+          commits=$(git log $(git describe --tags --abbrev=0 2>/dev/null || HEAD)~1..HEAD --oneline | head -n 10 || echo "* Production release")
+          
+          # Format as a JSON array of strings
+          notes_json="["
+          while IFS= read -r line; do
+            escaped=$(echo "$line" | sed 's/"/\\"/g')
+            notes_json="${notes_json}\"${escaped}\","
+          done <<< "$commits"
+          notes_json="${notes_json%,}]"
+          
+          if [ "$notes_json" = "]" ] || [ "$notes_json" = "[,]" ]; then
+            notes_json="[\"Production release for version ${{ env.VERSION_NAME }}\"]"
+          fi
+          
+          echo "RELEASE_NOTES=$notes_json" >> $GITHUB_ENV
+
+      - name: Create Draft GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Register Release with Backend Webhook
+        run: |
+          node -e '
+          const crypto = require("crypto");
+          const https = require("https");
+          
+          const secret = process.env.RELEASE_WEBHOOK_SECRET;
+          const backendUrl = process.env.BACKEND_API_URL;
+          
+          if (!secret || !backendUrl) {
+            console.error("Missing RELEASE_WEBHOOK_SECRET or BACKEND_API_URL in secrets/env");
+            process.exit(1);
+          }
+          
+          const payload = {
+            platform: "android",
+            environment: "production",
+            channel: "stable",
+            versionName: process.env.VERSION_NAME,
+            versionCode: parseInt(process.env.VERSION_CODE, 10),
+            artifact: {
+              name: `otakustreams-v${process.env.VERSION_NAME}.apk`,
+              url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.GITHUB_REF_NAME}/app-release.apk`,
+              sha256: process.env.APK_SHA256,
+              size: parseInt(process.env.APK_SIZE, 10)
+            },
+            minSupportedVersionCode: parseInt(process.env.VERSION_CODE, 10),
+            forceUpdate: false,
+            rolloutPercentage: 100,
+            releaseNotes: JSON.parse(process.env.RELEASE_NOTES),
+            createdBy: "github-actions"
+          };
+          
+          const bodyStr = JSON.stringify(payload);
+          const signature = crypto.createHmac("sha256", secret).update(bodyStr).digest("hex");
+          
+          const url = new URL(backendUrl);
+          const options = {
+            hostname: url.hostname,
+            port: url.port || (url.protocol === "https:" ? 443 : 80),
+            path: url.pathname + url.search,
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Release-Signature": signature,
+              "Content-Length": Buffer.byteLength(bodyStr)
+            }
+          };
+          
+          console.log(`Sending webhook request to: ${backendUrl}`);
+          const req = https.request(options, (res) => {
+            let data = "";
+            res.on("data", (chunk) => { data += chunk; });
+            res.on("end", () => {
+              console.log(`Response status: ${res.statusCode}`);
+              console.log(`Response: ${data}`);
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                console.log("Release registration successful");
+                process.exit(0);
+              } else {
+                console.error("Failed to register release with backend");
+                process.exit(1);
+              }
+            });
+          });
+          
+          req.on("error", (e) => {
+            console.error(`Request failed: ${e.message}`);
+            process.exit(1);
+          });
+          
+          req.write(bodyStr);
+          req.end();
+          '
+        env:
+          RELEASE_WEBHOOK_SECRET: ${{ secrets.RELEASE_WEBHOOK_SECRET }}
+          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
+
+      - name: Publish GitHub Release (Promote from Draft)
+        run: |
+          # Using GitHub API to update draft release to published
+          curl -L \
+            -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}" \
+            -d '{"draft":false}'
