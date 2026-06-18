@@ -49,8 +49,12 @@ jobs:
 
       - name: Set up Signing Key (Keystore)
         run: |
-          # Decode Base64 keystore into android/app directory
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.jks
+          # Use Node.js to write the binary keystore file safely to prevent shell-based corruption
+          node -e "
+          const fs = require('fs');
+          const buffer = Buffer.from(process.env.KEYSTORE_BASE64, 'base64');
+          fs.writeFileSync('android/app/release.jks', buffer);
+          "
           
           # Create key.properties configuration file
           cat <<EOT > android/key.properties
@@ -59,6 +63,8 @@ jobs:
           keyAlias=${{ secrets.KEY_ALIAS }}
           storeFile=release.jks
           EOT
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Build APK & AAB
         run: |
