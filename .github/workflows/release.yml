@@ -72,10 +72,12 @@ jobs:
         run: |
           flutter build apk --release --build-name=${{ env.VERSION_NAME }} --build-number=${{ env.VERSION_CODE }} --dart-define=ENVIRONMENT=production
           flutter build appbundle --release --build-name=${{ env.VERSION_NAME }} --build-number=${{ env.VERSION_CODE }} --dart-define=ENVIRONMENT=production
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/OtakuStreams.apk
+          mv build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/OtakuStreams.aab
 
       - name: Generate Checksum & Size
         run: |
-          apk_path="build/app/outputs/flutter-apk/app-release.apk"
+          apk_path="build/app/outputs/flutter-apk/OtakuStreams.apk"
           
           # Calculate SHA256 checksum
           sha256=$(sha256sum "$apk_path" | awk '{print $1}')
@@ -112,8 +114,8 @@ jobs:
         with:
           draft: true
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/OtakuStreams.apk
+            build/app/outputs/bundle/release/OtakuStreams.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -138,8 +140,8 @@ jobs:
             versionName: process.env.VERSION_NAME,
             versionCode: parseInt(process.env.VERSION_CODE, 10),
             artifact: {
-              name: `otakustreams-v${process.env.VERSION_NAME}.apk`,
-              url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.GITHUB_REF_NAME}/app-release.apk`,
+              name: "OtakuStreams.apk",
+              url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.GITHUB_REF_NAME}/OtakuStreams.apk`,
               sha256: process.env.APK_SHA256,
               size: parseInt(process.env.APK_SIZE, 10)
             },
