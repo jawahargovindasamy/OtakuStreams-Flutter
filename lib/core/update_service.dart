@@ -1,6 +1,6 @@
 import 'dart:io' show Platform;
 import 'dart:math' show Random;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +14,9 @@ class UpdateService {
   static const int _cacheDurationHours = 6;
 
   static Future<void> checkAndShowUpdate(BuildContext context, {bool forceCheck = false}) async {
+    // Skip update checks in debug mode to avoid interrupting local development
+    if (kDebugMode) return;
+
     // Web is always updated on reload, skip update check
     if (kIsWeb) return;
 

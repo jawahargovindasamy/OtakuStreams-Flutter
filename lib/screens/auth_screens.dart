@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
 import '../providers/auth_provider.dart';
 
 // COMMON LOGO WIDGET
@@ -310,6 +312,97 @@ Widget _buildSocialButton({
   );
 }
 
+Future<bool> _showAuthConfirmationDialog(BuildContext context, String urlString) async {
+  return await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F172A),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 1.5,
+              ),
+            ),
+            title: const Text(
+              'Open Link',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Are you sure you want to open this link?',
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  urlString,
+                  style: const TextStyle(
+                    color: Color(0xFF60A5FA),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Yes',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ) ??
+      false;
+}
+
+Future<void> _launchAuthURL(BuildContext context, String urlString) async {
+  final bool confirmed = await _showAuthConfirmationDialog(context, urlString);
+  if (!confirmed) return;
+
+  final Uri url = Uri.parse(urlString);
+  try {
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+  } catch (e) {
+    debugPrint('Error launching url: $e');
+  }
+}
+
 // LOGIN SCREEN
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -490,6 +583,39 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.5),
+                          children: [
+                            const TextSpan(text: 'By signing in, you agree to our '),
+                            TextSpan(
+                              text: 'Terms of Service',
+                              style: const TextStyle(
+                                color: Color(0xFF60A5FA),
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _launchAuthURL(context, 'https://otakustreams.netlify.app/terms'),
+                            ),
+                            const TextSpan(text: ' and '),
+                            TextSpan(
+                              text: 'Privacy Policy',
+                              style: const TextStyle(
+                                color: Color(0xFF60A5FA),
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _launchAuthURL(context, 'https://otakustreams.netlify.app/privacy'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     _buildSocialLoginSection(context),
                   ],
                 ),
@@ -528,8 +654,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   bool _showPassword = false;
+  bool _showConfirmPassword = false;
+  bool _agreeToTerms = false;
   String? _generalError;
   final Map<String, String> _errors = {};
 
@@ -538,6 +667,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -552,12 +682,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
 
     if (username.isEmpty) _errors['username'] = 'Username is required';
     if (email.isEmpty) _errors['email'] = 'Email is required';
-    if (password.isEmpty) _errors['password'] = 'Password is required';
+    
+    if (password.isEmpty) {
+      _errors['password'] = 'Password is required';
+    } else if (password.length < 8) {
+      _errors['password'] = 'Password must be at least 8 characters';
+    }
 
-    if (_errors.isNotEmpty) {
+    if (confirmPassword.isEmpty) {
+      _errors['confirmPassword'] = 'Please confirm your password';
+    } else if (confirmPassword != password) {
+      _errors['confirmPassword'] = 'Passwords do not match';
+    }
+
+    if (!_agreeToTerms) {
+      _generalError = 'You must agree to the Terms of Service and Privacy Policy';
+    }
+
+    if (_errors.isNotEmpty || !_agreeToTerms) {
       setState(() {
         _isLoading = false;
       });
@@ -692,7 +838,89 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         errorText: _errors['password'],
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Must be at least 8 characters',
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                    ),
+                    const SizedBox(height: 18),
+                    // Confirm Password Field
+                    const Text('Confirm Password', style: TextStyle(color: Color(0xFFE2E8F0), fontSize: 13, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: !_showConfirmPassword,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      decoration: _buildInputDecoration(
+                        hintText: '••••••••',
+                        prefixIcon: const Icon(LucideIcons.lock, size: 18),
+                        suffixIcon: IconButton(
+                          icon: Icon(_showConfirmPassword ? LucideIcons.eyeOff : LucideIcons.eye, size: 18),
+                          onPressed: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
+                        ),
+                        errorText: _errors['confirmPassword'],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Agreement Checkbox
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _agreeToTerms,
+                            activeColor: const Color(0xFF3B82F6),
+                            checkColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                _agreeToTerms = val ?? false;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+                              children: [
+                                const TextSpan(text: 'I agree to the '),
+                                TextSpan(
+                                  text: 'Terms of Services',
+                                  style: const TextStyle(
+                                    color: Color(0xFF60A5FA),
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () => _launchAuthURL(context, 'https://otakustreams.netlify.app/terms'),
+                                ),
+                                const TextSpan(text: ' and '),
+                                TextSpan(
+                                  text: 'Privacy Policy',
+                                  style: const TextStyle(
+                                    color: Color(0xFF60A5FA),
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () => _launchAuthURL(context, 'https://otakustreams.netlify.app/privacy'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     // Register Button
                     _buildGradientButton(
                       onPressed: _handleRegister,
