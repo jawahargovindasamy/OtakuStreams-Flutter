@@ -24,6 +24,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   bool _loading = true;
   AnimeDetail? _detail;
   bool _isWatchlistUpdating = false;
+  String? _pendingStatusLabel;
 
   static const List<Map<String, String>> _playlistConfig = [
     {'key': 'watching', 'label': 'Watching'},
@@ -72,11 +73,18 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     String poster,
   ) async {
     if (_isWatchlistUpdating) return;
+    final key = option['key']!;
     setState(() {
       _isWatchlistUpdating = true;
+      if (key == 'remove') {
+        _pendingStatusLabel = 'Removing...';
+      } else if (existing != null && existing['_id'] != null) {
+        _pendingStatusLabel = 'Updating...';
+      } else {
+        _pendingStatusLabel = 'Adding...';
+      }
     });
 
-    final key = option['key']!;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
@@ -124,6 +132,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       if (mounted) {
         setState(() {
           _isWatchlistUpdating = false;
+          _pendingStatusLabel = null;
         });
       }
     }
@@ -142,47 +151,86 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       orElse: () => {'key': '', 'label': ''},
     )['label']!;
 
-    final buttonChild = Container(
+    final buttonChild = AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: _isWatchlistUpdating
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: currentStatus != null 
-              ? const Color(0xFF3B82F6).withValues(alpha: 0.3) 
-              : Colors.white.withValues(alpha: 0.15),
+          color: _isWatchlistUpdating
+              ? const Color(0xFF3B82F6).withValues(alpha: 0.5)
+              : (currentStatus != null
+                  ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.15)),
         ),
       ),
-      child: _isWatchlistUpdating
-          ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (currentStatus == null) ...[
-                  const Icon(LucideIcons.plus, size: 14, color: Colors.white),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Add to List',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        child: Center(
+          widthFactor: 1.0,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            child: _isWatchlistUpdating
+                ? Row(
+                    key: const ValueKey('loading'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _pendingStatusLabel ?? 'Updating...',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    key: const ValueKey('idle'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (currentStatus == null) ...[
+                        const Icon(LucideIcons.plus, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Add to List',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                      ] else ...[
+                        const Icon(LucideIcons.check, size: 14, color: Color(0xFF10B981)),
+                        const SizedBox(width: 6),
+                        Text(
+                          activeLabel.isEmpty ? 'Add to List' : activeLabel,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                      ],
+                    ],
                   ),
-                ] else ...[
-                  const Icon(LucideIcons.check, size: 14, color: Color(0xFF10B981)),
-                  const SizedBox(width: 6),
-                  Text(
-                    activeLabel.isEmpty ? 'Add to List' : activeLabel,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
+          ),
+        ),
+      ),
     );
 
     final triggerButton = _isWatchlistUpdating

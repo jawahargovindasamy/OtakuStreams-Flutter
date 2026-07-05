@@ -136,8 +136,10 @@ class _WatchScreenState extends State<WatchScreen> {
   @override
   void didUpdateWidget(covariant WatchScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.id != widget.id || oldWidget.episodeNumber != widget.episodeNumber) {
+    if (oldWidget.id != widget.id) {
       _loadWatchData();
+    } else if (oldWidget.episodeNumber != widget.episodeNumber) {
+      _changeEpisode();
     }
   }
 
@@ -198,6 +200,23 @@ class _WatchScreenState extends State<WatchScreen> {
       debugPrint('Watch progress updated successfully');
     } catch (e) {
       debugPrint('Failed to update watch progress: $e');
+    }
+  }
+
+  Future<void> _changeEpisode() async {
+    _lastSentProgress = null;
+
+    // Check episode availability asynchronously (runs the Netlify function check)
+    await _checkEpisodeAvailability();
+
+    if (mounted && _isAvailable && _isCurrentServerWorking()) {
+      final isCurrent = (ModalRoute.of(context)?.isCurrent ?? true) || _isCustomWidgetActive;
+      if (isCurrent) {
+        _initWebViewController();
+        _updateWatchProgress();
+      } else {
+        _isPlayerBlanked = true;
+      }
     }
   }
 
