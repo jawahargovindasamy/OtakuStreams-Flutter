@@ -894,7 +894,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               children: [
                                 const TextSpan(text: 'I agree to the '),
                                 TextSpan(
-                                  text: 'Terms of Services',
+                                  text: 'Terms of Service',
                                   style: const TextStyle(
                                     color: Color(0xFF60A5FA),
                                     fontWeight: FontWeight.bold,
